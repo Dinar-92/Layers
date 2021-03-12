@@ -1,0 +1,13 @@
+version: '3.7'
+services:
+  db:
+    image: postgres:10-alpine
+    ports:
+      - 5400:5432
+    environment:
+      - POSTGRES_DB=appdb
+      - POSTGRES_USER=app
+      - POSTGRES_PASSWORD=pass
+# docker-compose up
+# docker-compose exec db psql -U app -d appdb
+
