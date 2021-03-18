@@ -43,7 +43,7 @@ public class UserRepositoryJDBCImpl implements UserRepository {
                     rs.getString("password"),
                     rs.getString("name"),
                     rs.getString("secret"),
-                    Set.of((String[])rs.getArray("roles").getArray()),
+                    Set.of((String[]) rs.getArray("roles").getArray()),
                     rs.getBoolean("removed"),
                     rs.getLong("created")
             );
@@ -61,7 +61,7 @@ public class UserRepositoryJDBCImpl implements UserRepository {
     // rs -> UserEntity
     @Override
     public List<UserEntity> findAll() {
-        String queryString = "SELECT id, login, password, name, secret, roles, EXTRACT(EPOCH FROM created) created, removed FROM users ORDER BY id";
+        final String queryString = "SELECT id, login, password, name, secret, roles, EXTRACT(EPOCH FROM created) created, removed FROM users ORDER BY id";
         try (
                 final Statement stmt = connection.createStatement();
                 final ResultSet rs = stmt.executeQuery(queryString);
@@ -79,77 +79,62 @@ public class UserRepositoryJDBCImpl implements UserRepository {
 
     @Override
     public Optional<UserEntity> findById(Long id) {
-        if (id == null || id == 0){
+        if (id == null || id == 0) {
             return Optional.empty();
         }
-        String queryString = "SELECT id, login, password, name, secret, roles, EXTRACT(EPOCH FROM created) created, removed FROM users WHERE id = ?";
+        final String queryString = "SELECT id, login, password, name, secret, roles, EXTRACT(EPOCH FROM created) created, removed FROM users WHERE id = ?";
         try (
                 PreparedStatement stmt = connection.prepareStatement(queryString);
         ) {
             stmt.setLong(1, id);
-            try(ResultSet rs = stmt.executeQuery();){
+            try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) {
                     return Optional.ofNullable(mapper.map(rs));
                 }
             }
-            return Optional.empty();
         } catch (SQLException e) {
             throw new DataAccessException(e);
         }
+        return Optional.of(null);
     }
 
     @Override
     public UserEntity save(UserEntity entity) {
-        if (entity == null){
-            throw new IllegalArgumentException("Argument is empty");
-        }
-        boolean insertUpdate = findById(entity.getId()).isEmpty();
-
-        String queryString =  (insertUpdate ?
-                "INSERT INTO users(login, password, name, secret, roles, created, removed) VALUES (?, ?, ?, ?, ?, ?, ?) ":
-                "UPDATE users SET login = ?, password = ?, name = ?, secret = ?, roles = ?, created = ?, removed = ? WHERE id = ? ") +
-                "RETURNING id, login, password, name, secret, roles, EXTRACT(EPOCH FROM created) created, removed";
-
         try (
-                PreparedStatement stmt = connection.prepareStatement(queryString);
+                PreparedStatement stmt = connection.prepareStatement(
+                        "INSERT INTO users (login, password, name, secret, roles, removed, created) VALUES (?, ?, ?, ?, ?, ?, ?)"
+                )
         ) {
-            int index = 0;
-            stmt.setString(++index, entity.getLogin());
-            stmt.setString(++index, entity.getPassword());
-            stmt.setString(++index, entity.getName());
-            stmt.setString(++index, entity.getSecret());
-            stmt.setArray(++index,  connection.createArrayOf("TEXT", entity.getRoles().toArray()));
-            stmt.setTimestamp(++index, new Timestamp(entity.getCreated()) );
-            stmt.setBoolean(++index, entity.isRemoved());
-            if (!insertUpdate) {
-                stmt.setLong(++index, entity.getId());
-            }
+            Array array = connection.createArrayOf("TEXT", entity.getRoles().toArray());
+            stmt.setString(1, entity.getLogin());
+            stmt.setString(2, entity.getPassword());
+            stmt.setString(3, entity.getName());
+            stmt.setString(4, entity.getSecret());
+            stmt.setArray(5, array);
+            stmt.setBoolean(6, entity.isRemoved());
+            stmt.setLong(7, entity.getCreated());
 
-            try(ResultSet rs = stmt.executeQuery()){
-                if(!rs.next()){
-                    throw new DataAccessException("Empty result");
-                }
-                return mapper.map(rs);
-            }
+            stmt.execute();
 
         } catch (SQLException e) {
             throw new DataAccessException(e);
         }
+        return entity;
     }
 
     @Override
     public boolean removeById(Long id) {
-        if(id == null || id == 0){
+        if (id == null || id == 0) {
             throw new IllegalArgumentException("Argument is empty");
         }
-        String queryString = "UPDATE users SET removed = TRUE WHERE id = ? "+
+        final String queryString = "UPDATE users SET removed = TRUE WHERE id = ? " +
                 "RETURNING id, login, password, name, secret, roles, EXTRACT(EPOCH FROM created) created, removed";
         try (
                 PreparedStatement stmt = connection.prepareStatement(queryString);
         ) {
             stmt.setLong(1, id);
-            try(ResultSet rs = stmt.executeQuery()){
-                if(!rs.next()){
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (!rs.next()) {
                     throw new DataAccessException("Empty result");
                 }
                 return mapper.map(rs).isRemoved();
@@ -160,22 +145,22 @@ public class UserRepositoryJDBCImpl implements UserRepository {
     }
 
     @Override
-    public boolean existsByLogin(String login){
+    public boolean existsByLogin(String login) {
         return findByLogin(login).isPresent();
     }
 
     @Override
-    public Optional<UserEntity> findByLogin(String login){
-        String loginParam = login.trim().toLowerCase();
-        if (loginParam.isEmpty()){
+    public Optional<UserEntity> findByLogin(String login) {
+        final String loginParam = login.trim().toLowerCase();
+        if (loginParam.isEmpty()) {
             return Optional.empty();
         }
-        String queryString = "SELECT id, login, password, name, secret, roles, EXTRACT(EPOCH FROM created) created, removed FROM users WHERE login = ?";
+        final String queryString = "SELECT id, login, password, name, secret, roles, EXTRACT(EPOCH FROM created) created, removed FROM users WHERE login = ?";
         try (
                 PreparedStatement stmt = connection.prepareStatement(queryString);
         ) {
             stmt.setString(1, loginParam);
-            try(ResultSet rs = stmt.executeQuery();){
+            try (ResultSet rs = stmt.executeQuery();) {
                 if (rs.next()) {
                     return Optional.ofNullable(mapper.map(rs));
                 }

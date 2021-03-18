@@ -29,7 +29,7 @@ public class Main {
       boolean               removedByIdResult = repository.removeById(2L);
       Optional<UserEntity>  userById          = repository.findById(2L);
       Optional<UserEntity>  userByLogin       = repository.findByLogin("Admin");
-      boolean               existUserByLogin  = repository.existsByLogin("User1");
+      boolean               existUserByLogin  = repository.existsByLogin("User1+");
 
       String[] roles = {"ROLE_GUEST"};
       Timestamp timestamp = new Timestamp(System.currentTimeMillis());
